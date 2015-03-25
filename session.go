@@ -170,6 +170,7 @@ func (s *Session) reader() {
 			if err != io.EOF {
 				s.Log.DEBUG("WS read error %v", err)
 			}
+			// канал закрываем только при чтении
 			close(s.qChan)
 		}
 		select {
@@ -183,13 +184,12 @@ func (s *Session) reader() {
 func (s *Session) writer() {
 	for {
 		select {
+		case <-s.qChan:
+			return
 		case m := <-s.wChan:
 			if err := s.WriteJSON(m); err != nil {
 				s.Log.DEBUG("WS write error %v", err)
-				close(s.qChan)
 			}
-		case <-s.qChan:
-			return
 		}
 	}
 }
