@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := logg.New(conf.LogLevel, logg.NewJSONWriter(os.Stdout))
+	log := logg.New(conf.LogLevel, logg.DefaultWriter)
 
 	handlerWs := new(HandlerWs)
 	handlerPost := new(HandlerPost)
