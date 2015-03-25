@@ -1,0 +1,94 @@
+WebSocket API
+
+GET /ws?site=SITE_NAME
+
+Протокол:
+
+Запросы от клиента имеют вид:
+{
+    "request":  ACTION, // строка с именем команды
+    "req_id":   "32r2"  // не обязательно (строка)
+    "body":     …       // json value
+}
+
+Ответы на запросы имеют вид:
+{
+    "response": STATUS, // "ok" или "error"
+    "req_id":   "32r2", // если был в запросе
+    "body":     …       // json value
+}
+
+Также от сервера могут приходить сообщения из каналов, на которые подписан клиент:
+{
+    "message":  CHANNEL_NAME,   // имя канала (строка)
+    "ord":      42,             // номер сообщения (число)
+    "body":     …               // json value
+}
+
+C→S
+=============
+{
+    "request":  "subscribe",
+    …
+    "body": {
+        "channel":  "foo",
+        "after":     0,
+        "token"     "fskdfkjnKJkj"
+        "auth":     "fskdfkjnKJkj"
+    }
+}
+auth = base64(hmac256(secret, channelName + token))
+after — это номер последнего сообщения, полученного в прошлый сеанс. Если в буфере есть сообщения с большими номерами, они будут отправлены сразу после оформления подписки. Два специальных значения after: 0 — не посылать значений из буфера, а ждать нового сообщения, -1 — послать последнее сообщение из буфера.
+
+Ответ: ok с телом null или error с телом — строкой сообщения об ошибке
+
+{
+    "request":  "unsubscribe",
+    …
+    "body": {
+        "channel":  "foo"
+    }
+}
+Ответ: ok с телом null или error с телом — строкой сообщения об ошибке
+
+
++++++++++++++++++++++++++++++++++++
+REST API для отпраки сообщений и получения информации
+
+GET /token?site=SITE_NAME
+
+Ответ:
+200
+{
+    "token":    "fo34hfng;fgv4f==", // b64 of token
+    "expires":  300                 // time in seconds
+}
+
+Отправка нового сообщения на сервер:
+
+POST /post?site=SITE_NAME
+{
+    "channel":  "foo",
+    "message":  {…},
+    "token":    "fo34hfng;fgv4f==", // token from /token request
+    "auth":     "fwefilugw34f=="    // base64(hmac256(postSecret, token))
+}
+
+Ответ:
+200
+{
+    "status": "ok"
+}
+400
+{
+    "status":   "error",
+    "message":  "error description"
+}
+
+Общая статистика сервера:
+TODO авторизация
+GET /stats
+{
+    "uptime" — аптайм
+    "memory" — объём аллоцированнй памяти
+}
