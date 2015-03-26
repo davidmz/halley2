@@ -76,7 +76,7 @@ func main() {
 					log.ERROR("Memcache listen error: %v", err)
 					continue
 				}
-
+				log.TRACE("MMC conn %q", conn.RemoteAddr())
 				go memcache.HandleConnection(conn, handlerMemc)
 			}
 		}()

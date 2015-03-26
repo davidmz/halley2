@@ -27,12 +27,29 @@ func (h *HandlerMemc) ServeMemcache(req *memcache.Request, resp *memcache.Respon
 
 	switch req.Command {
 
-	case "set":
+	case "set", "add", "replace", "append", "prepend":
 		if err := h.handlePost(req); err != nil {
 			log.DEBUG("Set error: %v", err)
 			resp.ClientError(err.Error())
 		} else {
 			resp.Status("STORED")
+		}
+
+	case "get":
+		if len(req.Args) == 0 {
+			resp.ClientError("key required")
+			break
+		}
+
+		log.TRACE("get %q", req.Args[0])
+
+		switch req.Args[0] {
+		case "token":
+			resp.Value(req.Args[0], NewToken(h.Conf.Secret))
+
+		default:
+			resp.NotFound()
+
 		}
 
 	case "version":
@@ -63,6 +80,10 @@ func (h *HandlerMemc) handlePost(req *memcache.Request) error {
 	data, err := req.ReadBody(dataSize)
 	if dataSize <= 0 || err != nil {
 		return err
+	}
+
+	if req.Command == "append" || req.Command == "prepend" {
+		return nil
 	}
 
 	siteName := req.Args[0]

@@ -21,21 +21,25 @@ const (
 )
 
 func (h *HandlerToken) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	exp := time.Now().Unix() + EXP_TIME
-
-	mac := hmac.New(sha256.New, h.Conf.Secret)
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, exp)
-	binary.Write(mac, binary.LittleEndian, exp)
-	buf.Write(mac.Sum(nil))
-
 	sendOK(w, &struct {
 		Token   []byte `json:"token"`
 		Expires int64  `json:"expires"`
 	}{
 		Expires: EXP_TIME,
-		Token:   buf.Bytes(),
+		Token:   NewToken(h.Conf.Secret),
 	})
+}
+
+func NewToken(secret []byte) []byte {
+	exp := time.Now().Unix() + EXP_TIME
+
+	mac := hmac.New(sha256.New, secret)
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, exp)
+	binary.Write(mac, binary.LittleEndian, exp)
+	buf.Write(mac.Sum(nil))
+
+	return buf.Bytes()
 }
 
 func CheckToken(token, secret []byte) bool {
