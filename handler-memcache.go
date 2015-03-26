@@ -45,7 +45,15 @@ func (h *HandlerMemc) ServeMemcache(req *memcache.Request, resp *memcache.Respon
 
 		switch req.Args[0] {
 		case "token":
-			resp.Value(req.Args[0], NewToken(h.Conf.Secret))
+			b, _ := json.Marshal(&struct {
+				Token   []byte `json:"token"`
+				Expires int64  `json:"expires"`
+			}{
+				Expires: TOKEN_EXP_TIME,
+				Token:   NewToken(h.Conf.Secret),
+			})
+
+			resp.Value(req.Args[0], b)
 
 		default:
 			resp.NotFound()

@@ -17,7 +17,7 @@ type HandlerToken struct {
 }
 
 const (
-	EXP_TIME = 120
+	TOKEN_EXP_TIME = 120
 )
 
 func (h *HandlerToken) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -25,13 +25,13 @@ func (h *HandlerToken) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Token   []byte `json:"token"`
 		Expires int64  `json:"expires"`
 	}{
-		Expires: EXP_TIME,
+		Expires: TOKEN_EXP_TIME,
 		Token:   NewToken(h.Conf.Secret),
 	})
 }
 
 func NewToken(secret []byte) []byte {
-	exp := time.Now().Unix() + EXP_TIME
+	exp := time.Now().Unix() + TOKEN_EXP_TIME
 
 	mac := hmac.New(sha256.New, secret)
 	buf := new(bytes.Buffer)
