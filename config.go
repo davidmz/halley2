@@ -14,6 +14,7 @@ import (
 
 type Conf struct {
 	ListenAddr  string
+	ListenMemc  string
 	LogLevel    logg.Level
 	ChannelSize int
 	MsgLifetime time.Duration
@@ -62,6 +63,8 @@ func ReadConf() (*Conf, error) {
 	if conf.ListenAddr, ok = baseSection["listen"]; !ok {
 		return nil, fmt.Errorf("listen address not setted")
 	}
+
+	conf.ListenMemc = baseSection["listen_memcache"]
 
 	if x, err := logg.LevelByName(baseSection["log_level"]); err != nil {
 		return nil, err

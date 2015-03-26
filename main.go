@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
 	"github.com/davidmz/halley2/internal/channel"
 	"github.com/davidmz/halley2/internal/npool"
 	"github.com/davidmz/logg"
+	"github.com/davidmz/memcache"
 	"github.com/facebookgo/inject"
 	"github.com/gorilla/websocket"
 	"github.com/sqs/mux"
@@ -28,6 +30,7 @@ func main() {
 	handlerPost := new(HandlerPost)
 	handlerToken := new(HandlerToken)
 	handlerStats := new(HandlerStats)
+	handlerMemc := new(HandlerMemc)
 	siteNameChecker := new(SiteNameChecker)
 
 	wsUgrader := &websocket.Upgrader{
@@ -46,7 +49,7 @@ func main() {
 
 	if err := inject.Populate(
 		log, wsUgrader, chanPool,
-		handlerWs, handlerPost, handlerToken, handlerStats,
+		handlerWs, handlerPost, handlerToken, handlerStats, handlerMemc,
 		conf, siteNameChecker,
 	); err != nil {
 		log.FATAL("Initialization error: %v", err)
@@ -59,9 +62,30 @@ func main() {
 	router.Handle("/token", siteNameChecker.Check(handlerToken))
 	router.Handle("/stats", handlerStats)
 
+	if conf.ListenMemc != "" {
+		log.INFO("Starting memcache server at %v", conf.ListenMemc)
+		ln, err := net.Listen("tcp", conf.ListenMemc)
+		if err != nil {
+			log.FATAL("Can not start memcache server: %v", err)
+			os.Exit(1)
+		}
+		go func() {
+			for {
+				conn, err := ln.Accept()
+				if err != nil {
+					log.ERROR("Memcache listen error: %v", err)
+					continue
+				}
+
+				go memcache.HandleConnection(conn, handlerMemc)
+			}
+		}()
+	}
+
 	log.INFO("Starting server at %v", conf.ListenAddr)
 	if err := http.ListenAndServe(conf.ListenAddr, router); err != nil {
 		log.FATAL("Can not start server: %v", err)
+		os.Exit(1)
 	}
 }
 
