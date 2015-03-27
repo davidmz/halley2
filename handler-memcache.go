@@ -54,6 +54,7 @@ func (h *HandlerMemc) ServeMemcache(req *memcache.Request, resp *memcache.Respon
 			})
 
 			resp.Value(req.Args[0], b)
+			resp.Status("END")
 
 		default:
 			resp.NotFound()
