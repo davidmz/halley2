@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 
 	"github.com/davidmz/halley2/internal/channel"
 	"github.com/davidmz/halley2/internal/npool"
 	"github.com/davidmz/logg"
-	"github.com/davidmz/memcache"
+	"github.com/davidmz/memcache/simplemmc"
 	"github.com/facebookgo/inject"
 	"github.com/gorilla/websocket"
 	"github.com/sqs/mux"
@@ -62,28 +61,21 @@ func main() {
 	router.Handle("/token", siteNameChecker.Check(handlerToken))
 	router.Handle("/stats", handlerStats)
 
+	startErrors := make(chan error)
+
 	if conf.ListenMemc != "" {
-		log.INFO("Starting memcache server at %v", conf.ListenMemc)
-		ln, err := net.Listen("tcp", conf.ListenMemc)
-		if err != nil {
-			log.FATAL("Can not start memcache server: %v", err)
-			os.Exit(1)
-		}
 		go func() {
-			for {
-				conn, err := ln.Accept()
-				if err != nil {
-					log.ERROR("Memcache listen error: %v", err)
-					continue
-				}
-				log.TRACE("MMC conn %q", conn.RemoteAddr())
-				go memcache.HandleConnection(conn, handlerMemc)
-			}
+			log.INFO("Starting memcache server at %v", conf.ListenMemc)
+			startErrors <- simplemmc.Serve(conf.ListenMemc, handlerMemc)
 		}()
 	}
 
-	log.INFO("Starting server at %v", conf.ListenAddr)
-	if err := http.ListenAndServe(conf.ListenAddr, router); err != nil {
+	go func() {
+		log.INFO("Starting http/ws server at %v", conf.ListenAddr)
+		startErrors <- http.ListenAndServe(conf.ListenAddr, router)
+	}()
+
+	if err := <-startErrors; err != nil {
 		log.FATAL("Can not start server: %v", err)
 		os.Exit(1)
 	}
