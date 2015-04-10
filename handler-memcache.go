@@ -21,19 +21,29 @@ type HandlerMemc struct {
 func (h *HandlerMemc) Get(key string) ([]byte, error) {
 	h.Log.TRACE("mmc get %q", key)
 
-	if key != "token" {
-		return nil, simplemmc.ErrNotFound
+	switch key {
+	case "token":
+		b, _ := json.Marshal(&struct {
+			Token   []byte `json:"token"`
+			Expires int64  `json:"expires"`
+		}{
+			Expires: TOKEN_EXP_TIME,
+			Token:   NewToken(h.Conf.Secret),
+		})
+
+		return b, nil
+
+	case "nextOrd":
+		b, _ := json.Marshal(&struct {
+			NextOrd channel.Ord `json:"next_ord"`
+		}{
+			NextOrd: channel.NextOrd(),
+		})
+
+		return b, nil
 	}
 
-	b, _ := json.Marshal(&struct {
-		Token   []byte `json:"token"`
-		Expires int64  `json:"expires"`
-	}{
-		Expires: TOKEN_EXP_TIME,
-		Token:   NewToken(h.Conf.Secret),
-	})
-
-	return b, nil
+	return nil, simplemmc.ErrNotFound
 }
 
 func (h *HandlerMemc) Set(key string, data []byte, mode simplemmc.SetMode) error {

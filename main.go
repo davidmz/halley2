@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/davidmz/halley2/internal/channel"
 	"github.com/davidmz/halley2/internal/npool"
@@ -59,6 +60,13 @@ func main() {
 	router.Handle("/ws", siteNameChecker.Check(handlerWs))
 	router.Handle("/post", siteNameChecker.Check(handlerPost))
 	router.Handle("/token", siteNameChecker.Check(handlerToken))
+	router.Handle("/next-ord", siteNameChecker.Check(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sendOK(w, &struct {
+			NextOrd channel.Ord `json:"next_ord"`
+		}{
+			NextOrd: channel.NextOrd(),
+		})
+	})))
 	router.Handle("/stats", handlerStats)
 
 	startErrors := make(chan error)
@@ -72,7 +80,13 @@ func main() {
 
 	go func() {
 		log.INFO("Starting http/ws server at %v", conf.ListenAddr)
-		startErrors <- http.ListenAndServe(conf.ListenAddr, router)
+		s := &http.Server{
+			Addr:         conf.ListenAddr,
+			Handler:      router,
+			ReadTimeout:  10 * time.Minute,
+			WriteTimeout: 10 * time.Minute,
+		}
+		startErrors <- s.ListenAndServe()
 	}()
 
 	if err := <-startErrors; err != nil {
